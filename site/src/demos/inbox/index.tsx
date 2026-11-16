@@ -43,7 +43,7 @@ export const InboxDemo = () => {
 
   return (
     <div>
-      {/* `id` remembers the shape across visits, so a return visit's first load is exact */}
+      {/* `id` remembers the shape across visits, so a return visit's first load is exact at the same width */}
       <Skeleton id="demo-inbox" data={messages} sample={SAMPLE}>
         {(messages) => (
           <ul className={styles.inbox}>

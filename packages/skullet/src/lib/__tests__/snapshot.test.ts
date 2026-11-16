@@ -19,24 +19,17 @@ describe("serialize", () => {
       mount(
         `<img src="/a.png" srcset="/b.png 2x" onerror="alert(1)"><a href="javascript:alert(1)">x</a><script>alert(1)</script><iframe src="/x"></iframe>`,
       ),
-      false,
     );
 
     expect(html).not.toMatch(/script|onerror|javascript:|src=|srcset|iframe/);
   });
 
-  it("replaces text with filler when asked", () => {
-    const html = serialize(mount(`<p>Ada Lovelace, 1815</p>`), true);
-    expect(html).toContain("Xxx Xxxxxxxx, 0000");
-    expect(html).not.toContain("Ada");
-  });
-
   it("keeps real text otherwise", () => {
-    expect(serialize(mount(`<p>Ada</p>`), false)).toContain("Ada");
+    expect(serialize(mount(`<p>Ada</p>`))).toContain("Ada");
   });
 
   it("drops form values", () => {
-    const html = serialize(mount(`<input value="secret">`), false);
+    const html = serialize(mount(`<input value="secret">`));
     expect(html).not.toContain("secret");
   });
 });

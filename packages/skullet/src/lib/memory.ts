@@ -2,7 +2,7 @@ import { ATTR_REVEAL } from "./constants";
 import { debugging, reportReveal } from "./debug";
 import { isDev, sampleFrom, warnOnce } from "./dev";
 import { takeLoadingSize } from "./ghost";
-import { rememberShape, trackShape } from "./shapes";
+import { rememberShape, shapeEra, trackShape } from "./shapes";
 import { autoKey } from "./snapshot";
 
 export type MemoryOptions = {
@@ -13,6 +13,8 @@ export type MemoryOptions = {
   rendered?: boolean;
   /** A `sample` was passed. */
   sample?: boolean;
+  /** `false` remembers nothing. */
+  persistence?: boolean;
 };
 
 const SAVE_DELAY = 250;
@@ -24,6 +26,7 @@ export class Memory {
   private mutations: MutationObserver;
   private resize: ResizeObserver | null;
   private untrack: () => void;
+  private era = shapeEra();
 
   constructor(
     private element: HTMLElement,
@@ -59,7 +62,13 @@ export class Memory {
 
   save() {
     clearTimeout(this.timer);
-    if (this.key && this.element.isConnected && this.element.offsetHeight) {
+    if (
+      this.options.persistence !== false &&
+      this.era === shapeEra() &&
+      this.key &&
+      this.element.isConnected &&
+      this.element.offsetHeight
+    ) {
       rememberShape(this.key, this.element);
     }
   }
@@ -111,7 +120,7 @@ export class Memory {
       const unsized = [...this.element.querySelectorAll("img")]
         .filter(
           (image, i) =>
-            (before.images[i] ?? 0) < 1 &&
+            (before.images[i] ?? 1) < 1 &&
             image.getBoundingClientRect().height >= 1,
         )
         .map((image) => image.currentSrc.split("/").pop() || "an image");

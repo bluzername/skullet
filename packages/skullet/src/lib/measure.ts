@@ -260,6 +260,64 @@ const isPainted = (style: CSSStyleDeclaration) =>
 
 const isMedia = (element: Element) => MEDIA.has(element.localName);
 
+export type SkeletonSurface = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  background: string;
+  shadow: string;
+  border: string;
+  radius: string;
+};
+
+/** The painted boxes in `root` that no bone stands for: colours and a box, never an image. */
+export function surfacesOf(
+  root: HTMLElement,
+  covered: Set<Element>,
+): SkeletonSurface[] {
+  const origin = root.getBoundingClientRect();
+  const scaleX = root.offsetWidth ? origin.width / root.offsetWidth : 1;
+  const scaleY = root.offsetHeight ? origin.height / root.offsetHeight : 1;
+  const surfaces: SkeletonSurface[] = [];
+
+  for (const element of root.querySelectorAll("*")) {
+    if (isMedia(element) || element.closest("svg")) continue;
+    if (element.closest(`[${ATTR_IGNORE}], [${ATTR_OWN}]`)) continue;
+    let bone: Element | null = element;
+    while (bone && bone !== root && !covered.has(bone)) {
+      bone = bone.parentElement;
+    }
+    if (bone && bone !== root) continue;
+
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    if (style.visibility === "hidden" || !rect.width || !rect.height) continue;
+    if (!isPainted(style)) continue;
+
+    const filled =
+      isSet(style.backgroundColor, "transparent") &&
+      !TRANSPARENT.test(style.backgroundColor);
+    const outlined = bordered(style);
+    const shadow = shadowPaints(style.boxShadow) ? style.boxShadow : "";
+    if (!filled && !outlined && !shadow) continue;
+
+    surfaces.push({
+      x: (rect.left - origin.left) / scaleX,
+      y: (rect.top - origin.top) / scaleY,
+      width: rect.width / scaleX,
+      height: rect.height / scaleY,
+      background: filled ? style.backgroundColor : "",
+      shadow,
+      border: outlined
+        ? `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`
+        : "",
+      radius: `${style.borderTopLeftRadius} ${style.borderTopRightRadius} ${style.borderBottomRightRadius} ${style.borderBottomLeftRadius}`,
+    });
+  }
+  return surfaces;
+}
+
 const isEmptyText = (element: Element) =>
   TEXT.has(element.localName) &&
   !element.firstElementChild &&

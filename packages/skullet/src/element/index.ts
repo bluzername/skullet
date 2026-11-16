@@ -18,6 +18,7 @@ export class SkulletReveal extends Base {
     content.append(...this.childNodes);
     this.reveal = new Reveal(this, {
       id: this.id || undefined,
+      persistence: this.getAttribute("persistence") !== "false",
       reveal: (this.getAttribute("reveal") as RevealMode | null) ?? undefined,
       label: this.getAttribute("label") ?? undefined,
       onReveal: () => this.dispatchEvent(new Event("reveal")),

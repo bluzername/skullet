@@ -1,4 +1,3 @@
-import { textContext } from "./canvas";
 import { ATTR_COVERED, MEDIA_TAGS } from "./constants";
 
 const MEDIA = new Set(MEDIA_TAGS);
@@ -17,38 +16,13 @@ const STRIPPED = new Set([
   "alt",
   ATTR_COVERED,
 ]);
-
+// CJK has its own stand-in, as it wraps between any two characters and Latin filler wouldn't
 export const fill = (value: string) =>
-  value.replace(/[A-Z]/g, "X").replace(/[a-z]/g, "x").replace(/\d/g, "0");
-
-// Filler has different glyphs to the text it replaces; letter-spacing makes up the difference, so it wraps the same
-function fillText(original: Text, copy: Text) {
-  const filled = fill(copy.data);
-  copy.data = filled;
-
-  const parent = original.parentElement;
-  const context = textContext();
-  if (!parent || !context || !filled.trim()) return;
-
-  const style = getComputedStyle(parent);
-  context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-  const shape = (value: string) => {
-    const collapsed = value.replace(/\s+/g, " ");
-    if (style.textTransform === "uppercase") return collapsed.toUpperCase();
-    if (style.textTransform === "lowercase") return collapsed.toLowerCase();
-    return collapsed;
-  };
-
-  const target = context.measureText(shape(original.data)).width;
-  const current = context.measureText(shape(filled)).width;
-  const delta = (target - current) / shape(filled).length;
-  if (Math.abs(delta) < 0.01) return;
-
-  const span = document.createElement("span");
-  span.style.letterSpacing = `${(parseFloat(style.letterSpacing) || 0) + delta}px`;
-  copy.replaceWith(span);
-  span.append(copy);
-}
+  value
+    .replace(/\p{M}|\p{Extended_Pictographic}/gu, "")
+    .replace(/[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Hangul}]/gu, "口")
+    .replace(/\p{L}/gu, (letter) => (/\p{Lu}/u.test(letter) ? "X" : "x"))
+    .replace(/\p{N}/gu, "0");
 
 function sanitize(root: ParentNode) {
   for (const element of root.querySelectorAll(REMOVED)) element.remove();
@@ -79,25 +53,17 @@ function sanitize(root: ParentNode) {
   }
 }
 
-/** The markup in `root`, safe to keep: no scripts, handlers or media sources; `filler` replaces its text too. */
-export function serialize(root: HTMLElement, filler: boolean): string {
+/** The markup in `root`, safe to keep: no scripts, handlers or media sources. */
+export function serialize(root: HTMLElement): string {
   const clone = root.cloneNode(true) as HTMLElement;
-  const show = NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT;
-  const original = document.createTreeWalker(root, show);
-  const copy = document.createTreeWalker(clone, show);
+  const original = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+  const copy = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
 
-  const texts: [Text, Text][] = [];
   const media: [Element, HTMLElement][] = [];
   while (original.nextNode() && copy.nextNode()) {
-    const a = original.currentNode;
-    const b = copy.currentNode;
-    if (a.nodeType === Node.TEXT_NODE) {
-      if (filler) texts.push([a as Text, b as Text]);
-    } else if (
-      MEDIA.has((a as Element).localName) ||
-      REPLACED.has((a as Element).localName)
-    ) {
-      media.push([a as Element, b as HTMLElement]);
+    const a = original.currentNode as Element;
+    if (MEDIA.has(a.localName) || REPLACED.has(a.localName)) {
+      media.push([a, copy.currentNode as HTMLElement]);
     }
   }
 
@@ -115,7 +81,6 @@ export function serialize(root: HTMLElement, filler: boolean): string {
       b.style.height = `${rect.height}px`;
     }
   }
-  for (const [a, b] of texts) fillText(a, b);
 
   sanitize(clone);
   return clone.innerHTML;
@@ -140,7 +105,7 @@ const signature = (element: Element, depth: number): string =>
     })
     .join(",");
 
-const hash = (value: string) => {
+export const hash = (value: string) => {
   let h = 5381;
   for (let i = 0; i < value.length; i++) h = (h * 33) ^ value.charCodeAt(i);
   return (h >>> 0).toString(36);

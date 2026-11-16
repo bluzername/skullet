@@ -23,7 +23,8 @@
     type MemoryOptions,
     type PaneBox,
     type RevealMode,
-  } from '../lib';
+    shapeEra,
+} from '../lib';
 
   type Props = {
     /** Shows the skeleton, even over `data`. With `data`, it also shows while there is none. */
@@ -53,7 +54,13 @@
   // Set by SkulletProvider, when there is one
   const config =
     getContext<
-      { nonce?: string; reveal?: RevealMode; boot?: { sent: boolean } } | undefined
+      | {
+          nonce?: string;
+          reveal?: RevealMode;
+          persistence?: boolean;
+          boot?: { sent: boolean };
+        }
+      | undefined
     >('skullet') ?? {};
 
   // The full script once a page where a provider keeps count — claimed when first rendered, the skeletons after it send a stub
@@ -92,10 +99,12 @@
   );
   const error = $derived(props.error ?? ours?.error);
 
+  const persistence = $derived(props.persistence ?? config.persistence);
+
   // The last data shown, so a reload's skeleton has its exact shape — of the same `id` only
-  let last: { id?: string; data: T } | null = null;
+  let last: { id?: string; data: T; era: number } | null = null;
   $effect(() => {
-    if (data != null) last = { id: props.id, data };
+    if (data != null) last = { id: props.id, data, era: shapeEra() };
   });
 
   // A snippet fed data has nothing to render without it, so that's a skeleton too
@@ -104,7 +113,10 @@
       (driven && data == null && !error && !props.empty),
   );
   const real = $derived(
-    data ?? (last && last.id === props.id ? last.data : null),
+    data ??
+      (last && last.id === props.id && last.era === shapeEra()
+        ? last.data
+        : null),
   );
   const shown = $derived(real ?? props.sample);
 
@@ -214,7 +226,12 @@
           {...{ [ATTR_LOADING]: '' }}
           aria-hidden="true"
           inert
-          use:ghost={{ id: props.id, exact: real != null, refetch: data != null }}
+          use:ghost={{
+            id: props.id,
+            exact: real != null,
+            refetch: data != null,
+            persistence,
+          }}
         >
           <div {...{ [ATTR_GHOST]: '' }}>{@render render(shown)}</div>
           <div {...{ [ATTR_SNAPSHOT]: '' }}></div>
@@ -243,6 +260,7 @@
           data,
           rendered: driven,
           sample: props.sample !== undefined,
+          persistence,
         }}
       >
         {@render render(data)}

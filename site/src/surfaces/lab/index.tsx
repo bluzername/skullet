@@ -35,12 +35,14 @@ import { HintsDemo } from "@/demos/hints";
 import { ScopedThemesDemo } from "@/demos/scoped-themes";
 import { SkeletonSourcesDemo } from "@/demos/skeleton-sources";
 import { StatesDemo } from "@/demos/states";
+import { StoredShapesDemo } from "@/demos/stored-shapes";
 
 const api = { Ghost, Reveal, forgetShapes };
 
 const SECTIONS = [
   ["states", "Empty and error"],
   ["sources", "Skeleton sources"],
+  ["stored", "Stored shapes"],
   ["hints", "Hints"],
   ["scoped", "Scoped themes"],
   ["accessibility", "Accessibility"],
@@ -194,6 +196,16 @@ export const Lab = ({
           holds still.
         </p>
         <SkeletonSourcesDemo />
+      </Section>
+
+      <Section id="stored" title="Stored shapes">
+        <p>
+          Across visits, only the size and position of each bone are stored.
+          Each case below shows where that holds, and where it gives up.{" "}
+          <strong>Return visit</strong> leaves the shape from storage and
+          nothing else, as a reload would.
+        </p>
+        <StoredShapesDemo />
       </Section>
 
       <Section id="hints" title="Hints">

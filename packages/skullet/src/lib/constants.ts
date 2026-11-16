@@ -6,6 +6,7 @@ export const ATTR_SNAPSHOT = "skullet-snapshot"; // A remembered or fallback sha
 export const ATTR_LAYER = "skullet-layer";
 export const ATTR_RECT = "skullet-rect";
 export const ATTR_BAR = "skullet-bar";
+export const ATTR_SURFACE = "skullet-surface"; // A card's background and outline, stored and drawn back under its bones
 export const ATTR_INACTIVE = "skullet-inactive";
 export const ATTR_EXITING = "skullet-exiting"; // On a pane fading out — its skeleton holds still
 export const ATTR_COVERED = "skullet-covered"; // Drawn as one block by a bone, so its own paint is hidden

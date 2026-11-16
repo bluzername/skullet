@@ -20,6 +20,15 @@ afterEach(() => {
 });
 
 describe("<skullet-reveal>", () => {
+  it("stores nothing with persistence off", async () => {
+    const reveal = document.createElement("skullet-reveal");
+    reveal.setAttribute("persistence", "false");
+    reveal.innerHTML = `<p>Hello</p>`;
+    document.body.append(reveal);
+    await settle();
+    expect(localStorage.getItem("skullet:shapes")).toBeNull();
+  });
+
   it("starts as a skeleton of its children with loading, then reveals what it's shown", async () => {
     const reveal = element(`<p>Hello there, a line of text</p>`, true);
     const revealed = vi.fn();

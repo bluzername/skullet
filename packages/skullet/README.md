@@ -41,6 +41,7 @@ Or toggle it yourself, with plain children:
 | `sample`       | `T`                      | Stands in for `data` to draw the very first skeleton.         |
 | `loading`      | `boolean`                | Shows the skeleton, even over `data` — say, while refetching. |
 | `id`           | `string`                 | Remembers the skeleton's shape across visits under this key.  |
+| `persistence`  | `boolean`                | `false` stores no shape and reads none.                       |
 | `label`        | `string`                 | Read to screen readers while loading.                         |
 | `skeleton`     | `ReactNode`              | Shown while loading instead of the measured skeleton.         |
 | `error`        | `ReactNode`              | Shown instead of the content when set.                        |
@@ -262,7 +263,7 @@ Skullet uses the best it has, in this order:
 
 1. The data on screen, when you force `loading` over it.
 2. The data it last showed under the same `id`, so a reload is exact.
-3. The shape remembered from a previous visit.
+3. The shape remembered from a previous visit, at the same width.
 4. Your `sample`.
 5. Plain children, rendered without their data.
 6. A few generic lines, with a warning in development.
@@ -271,14 +272,20 @@ In development, skullet warns when a skeleton and its content differ in size,
 and when data-driven content has no `sample` it logs one for you to paste, with
 your data's keys and lengths and every value replaced.
 
-Remembered shapes keep layout, never content: text is replaced with filler,
-and media sources and form values are dropped. Clear them on sign-out:
+Remembered shapes are only the size and position of each bone, and the colours
+and box of any card under them: no text, tags, classes or attributes. Bones are drawn only at the width they were stored at;
+at any other, the next source down is used. Clear them on sign-out, before or
+after the page unmounts — other open tabs forget too:
 
 ```ts
 import { forgetShapes } from "skullet";
 
 forgetShapes();
 ```
+
+To remember nothing, set `persistence={false}` on `SkulletProvider`, or on one
+`Skeleton` or `SkeletonSuspense`, where it wins over the provider. `Reveal` takes
+it as an option and `<skullet-reveal>` as `persistence="false"`.
 
 ## Hints
 

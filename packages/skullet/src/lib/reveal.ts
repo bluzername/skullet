@@ -8,6 +8,8 @@ import { addStyles, removeStyles } from "./styles";
 export type RevealOptions = {
   /** Remembers the shape under this key; without it, one is derived from the markup. */
   id?: string;
+  /** Set to `false` to neither store this shape nor draw from a stored one. */
+  persistence?: boolean;
   /** How content replaces its skeleton: `smart` (the default), `together`, `sequence`, `sweep`, or a `RevealSpec` of your own. */
   reveal?: RevealMode;
   /** Read to screen readers while loading, in place of the skeleton — "Loading profile". */
@@ -48,7 +50,8 @@ export class Reveal {
       pane.prepend(status);
     }
     this.element.setAttribute("aria-busy", "true");
-    this.ghost = new Ghost(loading, { id: this.options.id });
+    const { id, persistence } = this.options;
+    this.ghost = new Ghost(loading, { id, persistence });
     return pane;
   }
 
@@ -58,7 +61,8 @@ export class Reveal {
     if (loading && this.options.onReveal)
       this.arrival.then(this.options.onReveal);
     this.element.removeAttribute("aria-busy");
-    this.memory = new Memory(pane, { id: this.options.id });
+    const { id, persistence } = this.options;
+    this.memory = new Memory(pane, { id, persistence });
     return pane;
   }
 

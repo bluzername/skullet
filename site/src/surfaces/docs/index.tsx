@@ -19,6 +19,7 @@ import { Section } from "@/components/section";
 import { ResizingDemo } from "@/demos/resizing";
 import { RevealModesDemo } from "@/demos/reveal-modes";
 import { SuspenseDemo } from "@/demos/suspense";
+import { MemoryDemo } from "@/demos/stored-shapes";
 import Link from "next/link";
 
 const REVEALS: [string, React.ReactNode][] = [
@@ -86,6 +87,7 @@ const API: [title: string, rows: Row[]][] = [
       ["sample", "T", "Stands in for data to draw the first skeleton."],
       ["loading", "boolean", "Shows the skeleton, even over data."],
       ["id", "string", "Remembers the shape under this key."],
+      ["persistence", "boolean", "false stores no shape and reads none."],
       ["label", "string", "Read to screen readers while loading."],
       ["skeleton", "ReactNode", "Shown instead of the measured skeleton."],
       ["empty", "boolean", "Shows emptyMessage in place of the content."],
@@ -107,6 +109,7 @@ const API: [title: string, rows: Row[]][] = [
     [
       ["skeleton", "ReactNode", "The content, rendered from sample data."],
       ["id", "string", "Remembers the shape under this key."],
+      ["persistence", "boolean", "false stores no shape and reads none."],
       ["label", "string", "Read to screen readers while suspended."],
       [
         "onReveal",
@@ -132,6 +135,11 @@ const API: [title: string, rows: Row[]][] = [
       ],
       ["nonce", "string", "For a Content Security Policy."],
       ["debug", "boolean", "Outlines every reveal and whether it moved."],
+      [
+        "persistence",
+        "boolean",
+        "false stores no shapes, for everything inside.",
+      ],
     ],
   ],
   [
@@ -147,6 +155,7 @@ const API: [title: string, rows: Row[]][] = [
     [
       ["element", "HTMLElement", "Where the skeleton and content go."],
       ["id", "string", "Remembers the shape under this key."],
+      ["persistence", "boolean", "false stores no shape and reads none."],
       ["reveal", "RevealMode", "How content replaces its skeleton."],
       ["label", "string", "Read to screen readers while loading."],
       [
@@ -167,6 +176,7 @@ const API: [title: string, rows: Row[]][] = [
     "skullet-reveal",
     [
       ["id", "attribute", "Remembers the shape under this key."],
+      ["persistence", "attribute", '"false" stores no shape and reads none.'],
       ["loading", "attribute", "Starts with its children as a skeleton."],
       ["reveal", "attribute", "How content replaces its skeleton."],
       ["label", "attribute", "Read to screen readers while loading."],
@@ -455,20 +465,31 @@ Avatar.Skeleton = () => <SkeletonBox width={40} height={40} radius="50%" />;`}
     <Section id="memory" title="Memory">
       <p>
         A reveal remembers the shape it showed, so its next skeleton is exact.
-        Within a visit it keeps the real content; across visits, only the
-        layout, in <code>localStorage</code>. Pass an <code>id</code> to key it,
-        or Skullet keys it by the page and the markup.
+        Within a visit it keeps the real content in memory. Across visits,{" "}
+        <code>localStorage</code> holds only the size and position of each bone,
+        and the colours and box of any card under them: no text, tags or
+        classes. Those bones are drawn only at the width they were stored at; at
+        any other, the skeleton falls back to <code>sample</code> or your plain
+        children. Pass an <code>id</code> to key it, or Skullet keys it by the
+        page and the markup.
       </p>
       <CodeBlock
         code={`<Skeleton id="inbox" data={messages}>
   {(messages) => <Inbox messages={messages} />}
 </Skeleton>`}
       />
+      <p>
+        This is everything stored for the card. <strong>Return visit</strong>{" "}
+        reloads it from that data alone.
+      </p>
+      <MemoryDemo />
       <Callout>
         <p>
           Shapes stay in <code>localStorage</code> after sign-out, so the next
           person on the device would see the outline of the last one’s inbox.
-          Call <code>forgetShapes()</code> on sign-out to clear them.
+          Call <code>forgetShapes()</code> on sign-out to clear them, here and
+          in any other open tab. To remember nothing, set{" "}
+          <code>persistence={"{false}"}</code> on the provider or a skeleton.
         </p>
       </Callout>
     </Section>

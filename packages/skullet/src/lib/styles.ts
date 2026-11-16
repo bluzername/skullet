@@ -2,6 +2,7 @@ import {
   ATTR_BAR,
   ATTR_BLOCK,
   ATTR_LAYER,
+  ATTR_SURFACE,
   ATTR_COVERED,
   ATTR_GHOST,
   ATTR_INACTIVE,
@@ -61,7 +62,7 @@ skullet-reveal[loading]:not(:defined) {
 }
 
 /* Containers keep their surface; what they hold is drawn by bones, measured before the first paint */
-@scope ([${ATTR_LOADING}]) to ([${ATTR_OWN}], [${ATTR_LAYER}]) {
+@scope ([${ATTR_LOADING}]) to ([${ATTR_OWN}], [${ATTR_LAYER}], [${ATTR_SURFACE}]) {
   :scope,
   :scope * {
     color: transparent !important;

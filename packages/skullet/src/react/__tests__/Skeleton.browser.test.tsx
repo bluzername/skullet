@@ -177,6 +177,24 @@ describe("Skeleton", () => {
     expect(arriving()[0]).toBeLessThan(FADE_DURATION);
   });
 
+  it("drops the last data once shapes are forgotten", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const ui = (data: { name: string } | null) => (
+      <Skeleton id="profile" data={data}>
+        {(user) => <p>{user.name}</p>}
+      </Skeleton>
+    );
+
+    render(ui({ name: "Ada" }));
+    await settle();
+    forgetShapes();
+    render(ui(null));
+
+    expect(
+      container.querySelector("[skullet-ghost]")?.textContent,
+    ).not.toContain("Ada");
+  });
+
   it("draws from the last data only for the same id", () => {
     const ui = (id: string, user: User | null) => (
       <Skeleton id={id} data={user} sample={SAMPLE}>

@@ -8,17 +8,41 @@ import {
   ATTR_OWN,
   ATTR_REVEAL,
   ATTR_SNAPSHOT,
+  ATTR_SURFACE,
   GHOSTED,
   UNCOVER,
 } from "./constants";
 import { reportLoading } from "./debug";
 import { noteSkeleton } from "./plan";
 import { warnOnce } from "./dev";
-import { measureSkeleton } from "./measure";
-import { flushShapes, recallShape } from "./shapes";
+import { measureSkeleton, type SkeletonSurface } from "./measure";
+import {
+  flushShapes,
+  recallShape,
+  recallStored,
+  type StoredShape,
+} from "./shapes";
 import { drawSkeleton } from "./shimmer";
 import { autoKey, restore } from "./snapshot";
 import { addStyles, removeStyles } from "./styles";
+
+function surface(box: SkeletonSurface) {
+  const element = document.createElement("div");
+  element.setAttribute(ATTR_SURFACE, "");
+  Object.assign(element.style, {
+    position: "absolute",
+    boxSizing: "border-box",
+    left: `${box.x}px`,
+    top: `${box.y}px`,
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+    backgroundColor: box.background,
+    boxShadow: box.shadow,
+    border: box.border,
+    borderRadius: box.radius,
+  });
+  return element;
+}
 
 export type GhostOptions = {
   /** Remembers the shape under this key; without it, one is derived from the markup. */
@@ -27,9 +51,11 @@ export type GhostOptions = {
   exact?: boolean;
   /** Its data is still set: a refetch over what's on screen, not a new load. */
   refetch?: boolean;
+  /** `false` draws from no remembered shape. */
+  persistence?: boolean;
 };
 
-type Source = "ghost" | "recall" | "fallback";
+type Source = "ghost" | "recall" | "fallback" | "stored";
 
 const FALLBACK = [100, 90, 60]
   .map(
@@ -81,6 +107,7 @@ const hasContent = (element: Element) =>
 export class Ghost {
   private ghost: HTMLElement;
   private snapshot: HTMLElement;
+  private stored: StoredShape | null = null;
   private layer: HTMLElement;
   private source: Source | null = null;
   private hadContent = false;
@@ -140,7 +167,7 @@ export class Ghost {
     cancelAnimationFrame(this.frame);
     this.frame = requestAnimationFrame(() => {
       const has = hasContent(this.ghost);
-      if (has !== this.hadContent) {
+      if (has !== this.hadContent || this.source === "stored") {
         this.hadContent = has;
         this.choose();
       }
@@ -151,6 +178,7 @@ export class Ghost {
   private choose() {
     let next: Source = "fallback";
     let html: string | null = null;
+    let stored: StoredShape | null = null;
 
     // Re-shaping a skeleton already on screen would move the page — keep it
     const settled = this.options.exact || served.has(this.root);
@@ -159,18 +187,32 @@ export class Ghost {
     if ((settled || own) && this.hadContent) {
       next = "ghost";
     } else {
-      const key = this.options.id ?? autoKey(this.ghost);
+      const key =
+        this.options.persistence !== false &&
+        (this.options.id ?? autoKey(this.ghost));
       if (key) {
         flushShapes(key);
         html = recallShape(key);
       }
+      if (!html && key) stored = recallStored(key);
       if (html) next = "recall";
+      else if (stored && this.fits(stored)) next = "stored";
       else if (this.hadContent) next = "ghost";
     }
+
+    this.stored = next === "stored" ? stored : null;
+    Object.assign(this.snapshot.style, {
+      width: this.stored ? `${this.stored.width}px` : "",
+      maxWidth: this.stored ? "100%" : "",
+      height: this.stored ? `${this.stored.height}px` : "",
+      position: this.stored ? "relative" : "",
+    });
 
     if (next !== this.source) {
       if (next === "recall" && html) {
         this.snapshot.replaceChildren(restore(html));
+      } else if (next === "stored" && stored) {
+        this.snapshot.replaceChildren(...stored.surfaces.map(surface));
       } else if (next === "fallback") {
         this.snapshot.innerHTML = FALLBACK;
         warnOnce(
@@ -188,7 +230,7 @@ export class Ghost {
 
     reportLoading(
       this.root.closest(`[${ATTR_REVEAL}]`),
-      next === "recall"
+      next === "recall" || next === "stored"
         ? "remembered shape"
         : next === "fallback"
           ? "fallback"
@@ -200,9 +242,18 @@ export class Ghost {
     );
   }
 
+  // Bones stored at another width would wrap wrong, so they're only drawn at their own — nothing laid out yet takes on theirs
+  private fits({ width }: StoredShape) {
+    const now = parseFloat(getComputedStyle(this.root).width) || 0;
+    return !now || Math.abs(now - width) <= 1;
+  }
+
   private measure() {
     const active = this.source === "ghost" ? this.ghost : this.snapshot;
-    drawSkeleton(this.layer, measureSkeleton(active, this.layer));
+    drawSkeleton(
+      this.layer,
+      this.stored?.rects ?? measureSkeleton(active, this.layer),
+    );
 
     const reveal = this.root.closest(`[${ATTR_REVEAL}]`);
     if (reveal) {

@@ -9,6 +9,7 @@ import {
   skeletonBoxStyle,
   type MemoryOptions,
   type SkeletonBoxOptions,
+  shapeEra,
 } from "../lib";
 import {
   Loading,
@@ -19,6 +20,7 @@ import {
   useIsomorphicLayoutEffect,
   useStyles,
 } from "./parts";
+import { usePersistence } from "./config";
 
 export type SkeletonBoxProps = SkeletonBoxOptions & {
   className?: string;
@@ -61,6 +63,8 @@ type SharedProps = {
   loading?: boolean;
   /** Remembers the shape under this key across visits. */
   id?: string;
+  /** Set to `false` to neither store this shape nor draw from a stored one. */
+  persistence?: boolean;
   /** Read to screen readers while loading, in place of the skeleton — "Loading profile". */
   label?: string;
   /** Shown while loading instead of the measured skeleton. */
@@ -94,6 +98,7 @@ export function Skeleton<T>(props: SkeletonProps<T>) {
   const { id, label, skeleton, empty, emptyMessage, error, className, style } =
     props;
   useStyles();
+  const persistence = usePersistence(props.persistence);
 
   const render =
     typeof props.children === "function"
@@ -104,9 +109,9 @@ export function Skeleton<T>(props: SkeletonProps<T>) {
   const plain = render ? null : (props.children as React.ReactNode);
 
   // The last data shown, so a reload's skeleton has its exact shape — of the same `id` only
-  const last = React.useRef<{ id?: string; data: T } | null>(null);
+  const last = React.useRef<{ id?: string; data: T; era: number } | null>(null);
   useIsomorphicLayoutEffect(() => {
-    if (data != null) last.current = { id, data };
+    if (data != null) last.current = { id, data, era: shapeEra() };
   });
 
   const show = (value: T | null | undefined) =>
@@ -123,7 +128,10 @@ export function Skeleton<T>(props: SkeletonProps<T>) {
   if (loading) {
     const previous = last.current;
     const real =
-      data ?? (previous && previous.id === id ? previous.data : null);
+      data ??
+      (previous && previous.id === id && previous.era === shapeEra()
+        ? previous.data
+        : null);
     key = "skeleton";
     node = skeleton ? (
       // Marked as drawing its own skeleton, so the reveal treats it as one
@@ -135,6 +143,7 @@ export function Skeleton<T>(props: SkeletonProps<T>) {
         id={id}
         exact={real != null}
         refetch={data != null}
+        persistence={persistence}
         label={label}
       >
         {show(real ?? sample)}
@@ -149,7 +158,13 @@ export function Skeleton<T>(props: SkeletonProps<T>) {
   } else {
     key = "content";
     node = show(data);
-    memory = { id, data, rendered: !!render, sample: sample !== undefined };
+    memory = {
+      id,
+      data,
+      rendered: !!render,
+      sample: sample !== undefined,
+      persistence,
+    };
   }
 
   const [current, setCurrent] = React.useState<{

@@ -33,6 +33,7 @@ import {
   shimmer,
   skeletonBoxStyle,
   type MemoryOptions,
+  shapeEra,
 } from "../lib";
 import { claimStub, useSkullet } from "./config";
 
@@ -71,6 +72,7 @@ export const Loading = defineComponent({
     id: String,
     exact: Boolean,
     refetch: Boolean,
+    persistence: { type: Boolean, default: undefined },
     label: String,
   },
   setup(props, { slots }) {
@@ -86,11 +88,15 @@ export const Loading = defineComponent({
           id: props.id,
           exact: props.exact,
           refetch: props.refetch,
+          persistence: props.persistence,
         });
       }
     };
     onMounted(attach);
-    watch(() => [props.id, props.exact, props.refetch], attach);
+    watch(
+      () => [props.id, props.exact, props.refetch, props.persistence],
+      attach,
+    );
     onBeforeUnmount(() => ghost?.destroy());
 
     // Snapshot and bones are Ghost's to fill, never Vue's
@@ -144,6 +150,8 @@ export const Skeleton = defineComponent({
     sample: { type: null as unknown as PropType<unknown>, required: false },
     /** Remembers the shape under this key across visits. */
     id: String,
+    /** Set to `false` to neither store this shape nor draw from a stored one. */
+    persistence: { type: Boolean, default: undefined },
     /** Read to screen readers while loading, in place of the skeleton — "Loading profile". */
     label: String,
     empty: Boolean,
@@ -155,7 +163,7 @@ export const Skeleton = defineComponent({
     const instance = getCurrentInstance();
     const config = useSkullet();
     // The last data shown, so a reload's skeleton has its exact shape — of the same `id` only
-    let last: { id?: string; data: unknown } | null = null;
+    let last: { id?: string; data: unknown; era: number } | null = null;
     // The pane on screen and the one before it, so content knows whether it replaced a skeleton
     let shown: string | null = null;
     let from: string | null = null;
@@ -165,7 +173,8 @@ export const Skeleton = defineComponent({
       // Data-driven when `data` is bound at all, even to null
       const driven = !!instance?.vnode.props && "data" in instance.vnode.props;
       const data = props.data;
-      if (data != null) last = { id: props.id, data };
+      const persistence = props.persistence ?? config.persistence;
+      if (data != null) last = { id: props.id, data, era: shapeEra() };
 
       const show = (value: unknown): VNodeChild =>
         driven
@@ -182,9 +191,16 @@ export const Skeleton = defineComponent({
       let key: string;
       let content: VNodeChild;
       if (loading) {
-        const previous = last as { id?: string; data: unknown } | null;
+        const previous = last as {
+          id?: string;
+          data: unknown;
+          era: number;
+        } | null;
         const real =
-          data ?? (previous && previous.id === props.id ? previous.data : null);
+          data ??
+          (previous && previous.id === props.id && previous.era === shapeEra()
+            ? previous.data
+            : null);
         key = "skeleton";
         content = slots.skeleton
           ? // Marked as drawing its own skeleton, so the reveal treats it as one
@@ -199,6 +215,7 @@ export const Skeleton = defineComponent({
                 id: props.id,
                 exact: real != null,
                 refetch: data != null,
+                persistence,
                 label: props.label,
               },
               () => show(real ?? props.sample),
@@ -219,6 +236,7 @@ export const Skeleton = defineComponent({
               data,
               rendered: driven,
               sample: props.sample !== undefined,
+              persistence,
             },
           },
           () => show(data),

@@ -48,7 +48,8 @@ export { Ghost } from "./ghost";
 export type { GhostOptions } from "./ghost";
 export { Memory } from "./memory";
 export type { MemoryOptions } from "./memory";
-export { forgetShapes } from "./shapes";
+export { forgetShapes, recallStored, shapeEra } from "./shapes";
+export type { StoredShape } from "./shapes";
 export {
   createSkeletonBox,
   DEFAULT_SKELETON_BOX_OPTIONS,
