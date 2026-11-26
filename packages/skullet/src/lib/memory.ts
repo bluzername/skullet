@@ -2,7 +2,7 @@ import { ATTR_REVEAL } from "./constants";
 import { debugging, reportReveal } from "./debug";
 import { isDev, sampleFrom, warnOnce } from "./dev";
 import { takeLoadingSize } from "./ghost";
-import { currentEpoch, rememberShape, trackShape } from "./shapes";
+import { currentEpoch, forgetShape, rememberShape, trackShape } from "./shapes";
 import { autoKey } from "./snapshot";
 
 export type MemoryOptions = {
@@ -13,6 +13,8 @@ export type MemoryOptions = {
   rendered?: boolean;
   /** A `sample` was passed. */
   sample?: boolean;
+  /** `false` remembers nothing. */
+  remember?: boolean;
 };
 
 const SAVE_DELAY = 250;
@@ -33,6 +35,7 @@ export class Memory {
     private options: MemoryOptions = {},
   ) {
     this.key = options.id ?? autoKey(element);
+    if (options.remember === false && this.key) forgetShape(this.key);
     this.untrack = this.key
       ? trackShape(this.key, () => this.save())
       : () => {};
@@ -64,6 +67,7 @@ export class Memory {
     clearTimeout(this.timer);
     if (
       this.epoch === currentEpoch() &&
+      this.options.remember !== false &&
       this.key &&
       this.element.isConnected &&
       this.element.offsetHeight
